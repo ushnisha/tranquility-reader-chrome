@@ -16,6 +16,33 @@ function runTranquility(mode) {
      });
 }
 
+function runTranquilityOnSelection() {
+    let mode = "RunOnSelection";
+    console.log("Entered runTranquility at: " + new Date());
+    console.log("Run Mode: " + mode);
+    browser.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        let active_tab = tabs[0];
+
+        console.log(active_tab.id);
+
+        // Send message to tab to find out if Tranquility has already run on that tab
+ 
+       let onSendMessage = function(response) {
+           if (browser.runtime.lastError) {
+               console.log(browser.runtime.lastError);
+               // Tranquility has not already run; so insert content scripts and run Tranquility
+               insertContentScriptsAndCSSAndAction(active_tab.id, mode);
+           }
+           else {
+               // Tranquility must have run; only then we have a possible response from content script
+               console.log("Response From Content Script: " + response.response);
+               runAction(active_tab.id, mode);
+           }
+       }
+
+       let sendMessage = browser.tabs.sendMessage(active_tab.id, {tranquility_action: "Status"}, onSendMessage);
+    });
+}
 
 function addTranquilityAnnotation() {
     console.log("Sending message to content script to add an annotation...");
@@ -31,6 +58,20 @@ function modifyTabURL(thisURL) {
     });    
 }
 
+function runAction(tabId, action) {
+    // Send message to run tranquility (or other appropriate action that the content scripts
+    // will handle
+    let onSendMessage = function(response) {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            console.log("Response From Content Script: " + response.response);
+        }
+    }
+
+    let sendMessage = browser.tabs.sendMessage(tabId, {tranquility_action: action}, onSendMessage);
+}
 
 function insertContentScriptsAndCSSAndAction(tabId, action) {
     
@@ -59,18 +100,7 @@ function insertContentScriptsAndCSSAndAction(tabId, action) {
                                 //
                                 //setZoom(1);
 
-                                // Send message to run tranquility (or other appropriate action that the content scripts
-                                // will handle
-                                let onSendMessage = function(response) {
-                                    if (browser.runtime.lastError) {
-                                        console.log(browser.runtime.lastError);
-                                    }
-                                    else {
-                                        console.log("Response From Content Script: " + response.response);
-                                    }
-                                }
-
-                                let sendMessage = browser.tabs.sendMessage(tabId, {tranquility_action: action}, onSendMessage);
+                                runAction(tabId, action);
                             }
                         });
                     });
@@ -81,9 +111,38 @@ function insertContentScriptsAndCSSAndAction(tabId, action) {
 
 }
 
-// url: "about:blank" not working in Chrome
-// using "www.google.com" instead
-//
+function allTabsUpdateTranquilityPreferences() {
+
+    let onQuerying = function(tabs) {
+
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            for (let tab of tabs) {
+                updateTab(tab.id);
+            }
+        }
+    }
+
+    let querying = browser.tabs.query({}, onQuerying);
+}
+
+function updateTab(tabId) {
+    let onSendMessage = function(response) {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            console.log("Response From Content Script: " + response.response);
+        }
+    }
+
+    let sendMessage = browser.tabs.sendMessage(tabId,
+                                               {tranquility_action: "UpdateTranquilityPreferences"},
+                                               onSendMessage);
+}
+
 function displayTranquilityOfflinePages() {
         
     let onUpdate = function(tab) {
@@ -104,9 +163,6 @@ function displayTranquilityOfflinePages() {
 }
 
 
-// url: "about:blank" not working in Chrome
-// using "www.google.com" instead
-//
 function exportTranquilityOfflinePages() {
     
     let onUpdate = function(tab) {
@@ -128,9 +184,6 @@ function exportTranquilityOfflinePages() {
 }
 
 
-// url: "about:blank" not working in Chrome
-// using "www.google.com" instead
-//
 function importTranquilityOfflinePages() {
         
     let onUpdate = function(tab) {
@@ -180,32 +233,28 @@ function setZoom(zoom) {
     let setting = browser.tabs.setZoom(zoom, onSetZoom);
 }
 
+
 // On installation check to see if an option is gettable; if not, set that option
 function handleInstalled(details) {
 
     console.log("Tranquility installed!");
     console.log(details);
-    
-    let options_list = {"tranquility_background_color"              : "#FFFFFF", 
-                        "tranquility_font_color"                    : "#000000", 
-                        "tranquility_link_color"                    : "#0000FF", 
-                        "tranquility_annotation_highlight_color"    : "#FFFF99",
-                        "tranquility_font_name"                     : "Georgia", 
-                        "tranquility_font_size"                     : "22", 
-                        "tranquility_reading_width"                 : "55", 
-                        "tranquility_line_height"                   : "140", 
-                        "tranquility_text_align"                    : "Left"
-    };
-      
-    let option_keys = Object.keys(options_list);
-    
-    for (let opt=0; opt < option_keys.length; opt++) {
 
+    let options_list = tranquility_presets["Default (Light)"];
+
+    let option_keys = Object.keys(options_list);
+
+    for (let opt=0; opt < option_keys.length; opt++) {
         let opt_name = option_keys[opt];
         let opt_value = options_list[opt_name];
-        initializeOption(opt_name, opt_value);        
-  }
-  
+        initializeOption(opt_name, opt_value);
+    }
+
+    // Finally, create a new option to store the presets
+    // to allow users to add their own custom presets
+    initializeOption("tranquility_presets",
+             JSON.stringify(tranquility_presets));
+
 }
 
 function initializeOption(opt_name, opt_value) {
@@ -234,6 +283,5 @@ function initializeOption(opt_name, opt_value) {
 }
 
 
-browser.runtime.onInstalled.addListener(handleInstalled);
 browser.browserAction.onClicked.addListener(browserAction);
-
+browser.runtime.onInstalled.addListener(handleInstalled);

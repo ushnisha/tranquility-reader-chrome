@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "__MSG_extensionName__",
-    "version": "3.0.4",
+    "version": "3.0.8",
 
     "description": "__MSG_extensionDescription__",
     "homepage_url": "https://tranquility.ushnisha.com/",
@@ -39,6 +39,7 @@
     "background": {
       "scripts": ["background/tranquility_bg_db_interface.js", 
                   "background/tranquility_bg_message_manager.js",
+                  "background/tranquility_presets.js",
                   "background/tranquility_bg_common_functions.js",
                   "background/tranquility_bg_context_menu.js"]
     },
