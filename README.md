@@ -49,7 +49,7 @@ ported to Chrome/Chromium.
 ## License & Copyright:
 
 Tranquility is provided under GPLv3 license.
-Copyright (C) 2012-2017 Arun Kunchithapatham
+Copyright (C) 2012-2018 Arun Kunchithapatham
 
 ## Feedback:
 
