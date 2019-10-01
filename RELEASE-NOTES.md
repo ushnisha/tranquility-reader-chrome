@@ -1,3 +1,37 @@
+## Version 3.0.12:
+
+* Attempt to remove all event handlers in the original page to prevent
+  them from modifying the processed page
+
+* Fix to handle pages that have windows-1252 encoding
+
+* Ignore links like "mail:" that need not be processed by the addon
+  and which caused the addon to freeze while processing pages with such links
+
+* More aggressive removal of hidden elements
+  this can cause more images to be removed in the processed view
+
+* Removal of links with onclick events/javascript since they are often
+  associated with social media forwarding links/images and clutter the
+  processed page
+
+* Minor changes to make code consistent (tag names are now all in uppercase)
+
+--------------------------------
+
+## Version 3.0.11 (unreleased in Chrome -- combined with 3.0.12):
+
+* When a reader click on a link in the tranquility mode, the page
+  updates to show the clicked URL contents in the tranquility mode.
+  However, the address bar is not updated.
+
+  An icon is provided on the top right corner of the page with a
+  link to the URL of the page that is currently processed/displayed.
+
+* Updated copyright message
+
+--------------------------------
+
 ## Version 3.0.10:
 
 * Fix to scale images better

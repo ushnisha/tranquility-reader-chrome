@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2018 Arun Kunchithapatham
+   Copyright (c) 2012-2019 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ function applyAllTranquilityPreferences() {
 
 function applyTranquilityCSS() {
     let hlink = createNode(document, {type: 'LINK', attr: { href:browser.extension.getURL("css/tranquility.css"), rel:'stylesheet', type:'text/css' } });
-    let heads = document.getElementsByTagName('head');
+    let heads = document.getElementsByTagName('HEAD');
     for(let i=0; i < heads.length; i++) {
         heads[i].appendChild(hlink);
     }
@@ -130,7 +130,7 @@ function applyLinkColorPreferences() {
         }
         else {
             console.log("Applying Link Color Preferences");
-            let elems = document.documentElement.getElementsByTagName("a");
+            let elems = document.documentElement.getElementsByTagName("A");
             for(let i=0; i < elems.length; i++) {
                 elems[i].style.color = result.tranquility_link_color;
             }   
@@ -226,7 +226,7 @@ function applyLineHeightPreferences() {
 }
 
 function resizeImages(document, reading_width) {
-    let images = document.getElementsByTagName("img");
+    let images = document.getElementsByTagName("IMG");
     let max_width = document.body.clientWidth * 0.9 * reading_width / 100.0;
     console.log("Resizing images...");
     for(let im=0; im < images.length; im++)  {
