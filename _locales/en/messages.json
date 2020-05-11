@@ -16,7 +16,17 @@
 
   "extensionCommandRunDescription" : {
     "message"     : "Run Tranquility on the current page",
-    "description" : "English description for the keyboard command shortcut"
+    "description" : "English description for the keyboard command shortcut to run extension"
+  },
+
+  "extensionCommandShowPreferencesDescription" : {
+    "message"     : "Show Tranquility Preferences",
+    "description" : "English description for the keyboard command shortcut to show extension preferences"
+  },
+
+  "extensionCommandShowOfflinePagesDescription" : {
+    "message"     : "Show Tranquility Offline Pages",
+    "description" : "English description for the keyboard command shortcut to show offline pages"
   },
 
   "extensionRunTranquilityFromContextMenu" : {
@@ -161,9 +171,19 @@
     "description" : "Help message to indicate how to show/hide the menu bar at the bottom"
   },
 
+  "prefslink" : {
+    "message"     : "Tranquility Preferences",
+    "description" : "Text that indicates that the gear symbol is the preferences page URL"
+  },
+
   "originallink" : {
     "message"     : "Original Source URL",
     "description" : "Text that indicates that the link symbol is the original source URL"
+  },
+
+  "saveaspdf" : {
+    "message"     : "Save Page as PDF File",
+    "description" : "Button to save the processed page to a PDF file"
   },
 
   "readLaterNotSupportedString" : {

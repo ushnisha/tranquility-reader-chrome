@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,8 +34,12 @@
 var browser = browser || chrome;
 var currentURL = null;
 var dfsIndex = 1;
+var osVersion = null;
 
 function tranquilize(request, sender, sendResponse) {
+
+    requestOSVersion();
+
     if (request.tranquility_action === 'Run') {
         console.log("Called to run Tranquility at: " + new Date());
         RunOnLoad();
@@ -82,6 +86,10 @@ function tranquilize(request, sender, sendResponse) {
             return Promise.resolve({response: "Tab does not contain Tranquility Reader elements"});
         }
     }
+    else if (request.tranquility_action == 'UpdateOSVersion') {
+        updateOSVersion(request.osVersion);
+        return Promise.resolve({response: "Updated OS Version"});
+    }
     else if (request.tranquility_action == 'Status') {
         return Promise.resolve({response: "Tranquility Has Already Run"});
     }
@@ -109,7 +117,11 @@ function RunOnLoad() {
             url = currentURL;
         }
         console.log("url: " + url);
-        window.location.assign(url);
+
+        // Handle corner case when the url has a "#" tag
+        // this can prevent the window.location.assign from working!
+        //
+        window.location.assign(url.split("#")[0]);
     }
     // If tranquility has not been run, then "tranquilize" the document
     else {
@@ -319,7 +331,7 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
     console.log("Removed white spaces and comments");
     
     // Cleanup the head and unnecessary tags
-    let delTags = ["STYLE", "LINK", "META", "SCRIPT", "NOSCRIPT", "IFRAME", 
+    let delTags = ["STYLE", "LINK", "META", "SCRIPT", "NOSCRIPT", "IFRAME",
                    "SELECT", "DD", "INPUT", "TEXTAREA", "HEADER", "FOOTER",
                    "NAV", "FORM", "BUTTON", "PICTURE", "FIGURE", "SVG"];
     for(let i=0; i<delTags.length; i++) {
@@ -482,17 +494,39 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
 
     hideMenuDiv(contentDoc);
 
+    // Add a div to hold some useful links/icons/functionality
+    let quick_tools_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_quick_tools_div', id:'tranquility_quick_tools_div' } });
+    contentDoc.body.insertBefore(quick_tools_div, contentDoc.body.firstChild);
+
+    // Add a link to the preferences page for quick access rather than to go through about:addons
+    let prefs_link_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_prefs_link_div', id:'tranquility_prefs_link_div' } });
+    prefs_link_div.setAttribute('title', browser.i18n.getMessage("prefslink"));
+    let prefs_symbol = '\u2699';
+    prefs_link_div.textContent = prefs_symbol;
+    prefs_link_div.addEventListener("click", handleShowPreferencesClickEvent, false);
+    quick_tools_div.appendChild(prefs_link_div);
+
     // Add a link to the original webpage for quick navigation/copying at the top of the page
     let original_link_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_original_link_div', id:'tranquility_original_link_div' } });
     original_link_div.setAttribute('title', browser.i18n.getMessage("originallink"));
-    let original_link_anchor = createNode(contentDoc, {type: 'A', attr: {class:'tranquility_original_link_anchor', id:'tranquility_original_link_anchor' } });
-    original_link_anchor.href = thisURL;
-    original_link_anchor.alt = browser.i18n.getMessage("originallink");
-    let link_symbol = '\u26D3';
-    original_link_anchor.textContent = link_symbol;
-    original_link_div.appendChild(original_link_anchor);
-    contentDoc.body.insertBefore(original_link_div, contentDoc.body.firstChild);
-    
+    let original_link_img = createNode(contentDoc, {type: 'IMG', attr: {class:'tranquility_original_link_img', id:'tranquility_original_link_img', height: '40px', width:'30px', src: browser.extension.getURL("icons/tranquility_link.png")}});
+    original_link_img.alt = browser.i18n.getMessage("originallink");
+    original_link_div.appendChild(original_link_img);
+    original_link_div.addEventListener("click", handleLoadOriginalLinkClickEvent, false);
+    quick_tools_div.appendChild(original_link_div);
+
+    // Add a button to save page as PDF file
+    //
+    if (osVersion != null && osVersion != 'mac' && osVersion != 'android') {
+        let saveaspdf_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_saveaspdf_div', id:'tranquility_saveaspdf_div' } });
+        saveaspdf_div.setAttribute('title', browser.i18n.getMessage("saveaspdf"));
+        let saveaspdf_img = createNode(contentDoc, {type: 'IMG', attr: {class:'tranquility_saveaspdf_img', id:'tranquility_saveaspdf_img', height: '40px', width:'40px', src: browser.extension.getURL("icons/tranquility_pdf.png")}});
+        saveaspdf_img.alt = browser.i18n.getMessage("saveaspdf");
+        saveaspdf_div.appendChild(saveaspdf_img);
+        saveaspdf_div.addEventListener("click", handleSaveAsPDFClickEvent, false);
+        quick_tools_div.appendChild(saveaspdf_div);
+    }
+
     console.log("Added all custom buttons and menus");
     
     // Remove target attribute from all anchor elements
@@ -554,6 +588,7 @@ function removeTag(cdoc, tagString) {
     let c = cdoc.getElementsByTagName(tagString);
     let len = c.length;
     let tElem;
+
     for(let dt=0; dt < len; dt++) {
         tElem = c[len-dt-1];
         // Do not delete iframes with links to youtube videos
@@ -1052,6 +1087,13 @@ function removeAnchorAttributes(cdoc) {
     let c = cdoc.getElementsByTagName('A');
 
     for(let i=0; i < c.length; i++) {
+
+        // Do not process the tranquility_original_link_anchor
+        //
+        if (c[i].className == 'tranquility_original_link_anchor') {
+            continue;
+        }
+
         if(c[i].getAttribute('target')) {
             c[i].removeAttribute('target');
         }
@@ -1107,10 +1149,12 @@ function cloneImages(cdoc, collection) {
     // in data fields
     let images = cdoc.getElementsByTagName('IMG');
     for (let i = 0; i < images.length; i++) {
-        images[i].setAttribute('data-origWidth', images[i].width);
-        images[i].setAttribute('data-origHeight', images[i].height);
+        let img = new Image();
+        img.src = images[i].src;
+        img.setAttribute('data-dfsIndex', images[i].getAttribute('data-dfsIndex'));
+        img.alt = images[i].alt;
 
-        collection[images[i].src] = images[i].cloneNode(true);
+        collection[images[i].src] = img;
         console.log(images[i].src + ": " + images[i].alt);
     }
 }
@@ -1120,7 +1164,7 @@ function addBackImages(cdoc, imgs, indexMap) {
     let images = cdoc.body.getElementsByTagName('IMG');
     let imgMap = {};
     for (let i = 0; i < images.length; i++) {
-        imgMap[images[i].src] = 1;
+        imgMap[images[i].src] = i;
     }
 
     let children = cdoc.body.getElementsByTagName('*');
@@ -1199,6 +1243,21 @@ function deleteZeroSizeImages(cdoc) {
     }
 }
 
+// Send a message to the background script to return the OS Version
+//
+function requestOSVersion() {
+    if (osVersion == null) {
+        browser.runtime.sendMessage(
+        {
+         "action": "getOSVersion"
+        });
+    }
+}
+
+function updateOSVersion(version) {
+    console.log("Updating osVersion to: " + version);
+    osVersion = version;
+}
 
 /*
  * Assign tranquilize() as a listener for messages from the extension.

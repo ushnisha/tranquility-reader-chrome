@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -191,22 +191,6 @@ font.tranquility
   line-height:140%;  
 } 
 
-iframe.tranquility_dictionary
-{
-  font-family:Univers,Scala,Georgia,Verdana,Times,Helvetica; 
-  text-align:justify;
-  line-height:140%;  
-  border-left: solid 5px silver;
-  border-top: solid 5px silver;
-  border-bottom: solid 5px silver;
-  border-right: solid 5px silver;
-  border-radius: 15px;
-  top:15%;
-  height: 70%;
-  z-index: 9999990;
-  position: fixed;
-}
-
 div.tranquility_more_links_btn
 {
   font-family: Univers,Scala,Georgia,Verdana,Times,Helvetica; 
@@ -220,6 +204,7 @@ div.tranquility_more_links_btn
   text-align: center;
   float: left;
   margin: 0 10px 10px 0;
+  cursor: pointer;
 }
 
 div.tranquility_read_later_btn
@@ -235,6 +220,7 @@ div.tranquility_read_later_btn
   text-align: center;
   float: left;
   margin: 0 10px 10px 0;
+  cursor: pointer;
 }
 
 div.tranquility_offline_links_btn
@@ -250,6 +236,7 @@ div.tranquility_offline_links_btn
   text-align: center;
   float: left;
   margin: 0 10px 10px 0;
+  cursor: pointer;
 }
 
 div.tranquility_viewnotes_btn
@@ -265,6 +252,7 @@ div.tranquility_viewnotes_btn
   text-align: center;
   float: left;
   margin: 0 10px 10px 0;
+  cursor: pointer;
 }
 
 div.tranquility_expand_menu_btn
@@ -279,9 +267,10 @@ div.tranquility_expand_menu_btn
   position: fixed;
   bottom: 20px;
   right: 20px;
+  cursor: pointer;
 }
 
-div.tranquility_original_link_div
+div.tranquility_quick_tools_div
 {
   font-family: Univers,Scala,Georgia,Verdana,Times,Helvetica;
   font-size: 20px;
@@ -291,6 +280,38 @@ div.tranquility_original_link_div
   position: fixed;
   top: 20px;
   right: 20px;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+div.tranquility_original_link_div
+{
+  font-family: Univers,Scala,Georgia,Verdana,Times,Helvetica;
+  font-size: 20px;
+  z-index: 9999980;
+  text-align: right;
+  cursor: pointer;
+}
+
+div.tranquility_saveaspdf_div
+{
+  font-family: Univers,Scala,Georgia,Verdana,Times,Helvetica;
+  font-size: 20px;
+  z-index: 9999980;
+  text-align: right;
+  cursor: pointer;
+}
+
+
+div.tranquility_prefs_link_div
+{
+  font-family: Univers,Scala,Georgia,Verdana,Times,Helvetica;
+  font-size: 20px;
+  z-index: 9999980;
+  text-align: right;
+  cursor: pointer;
 }
 
 div.tranquility_menu
@@ -477,4 +498,59 @@ div.tranquility_progress_bar
    span.tranquility_annotation {
      font-size: 15px;
    }
+}
+
+@media print {
+
+  .tranquility_container {
+      width:100% !important;
+  }
+
+  .tranquility div,
+  .tranquility p,
+  .tranquility span,
+  .tranquility code,
+  .tranquility pre,
+  .tranquility blockquote,
+  .tranquility ul,
+  .tranquility ol,
+  .tranquility li,
+  .tranquility figure,
+  .tranquility .wp-caption {
+    font-size: medium !important;
+    margin: 0 0 10px 0 !important;
+    padding: 0 !important;
+  }
+
+  .tranquility_progress_bar,
+  .tranquility_quick_tools_div,
+  .tranquility_expand_menu_btn  {
+      visibility: hidden !important;
+  }
+
+  div:not([class^="tranquility"]) {
+      visibility: hidden !important;
+  }
+}
+
+@media all {
+  div[class*='social'],
+  div[class*='soc'],
+  div[class*='sharing'],
+  div[class^='header'],
+  div[class*='footer'],
+  div[class^='sidebar'],
+  div[class*='navigation'],
+  div[class*='video'],
+  div[class*='advertising'],
+  div[class*='-ad-'],
+  aside[class*='social'],
+  header,
+  footer,
+  svg,
+  path,
+  line
+  {
+    visibility: hidden !important;
+  }
 }

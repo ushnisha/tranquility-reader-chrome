@@ -1,3 +1,43 @@
+## Version 3.0.16:
+
+* New keyboard option to launch preferences page (Ctrl+Shift+J)
+
+* New keyboard option to launch saved/offline pages (Ctrl+Shift+K)
+
+* Keyboard shortcuts are user customizable and may need to be explicitly
+  set by the user from the webpage to avoid conflicts with other extensions.
+  Please refer to the webpage at: chrome://extensions/shortcuts
+
+* Fix bug in not reverting to original page when clicking on browser action
+  icon (when the URL has a "#" reference
+
+* Ability to view offline pages from the preferences page.  This avoids the
+  need to first run the extension on some page before a user can access the
+  saved/offline pages
+
+* Added user friendly privacy policy statement and explanation of permissions
+  used by the extension
+
+* Convinient link to save a PDF document of the Tranquility Reader view
+  for offline reading or sharing with others
+
+* Improve handling of images (fix cases where image width was larger
+  than the reading width setting)
+
+* Use CSS settings to identify some extraneous elements so that they
+  can be removed from the page during processing
+
+* CSS settings to allow for better print formatting width
+
+* Added an option to change browser action icon to a grayscale version
+
+* Preserve the original zoom setting of the page and restore
+  it after exiting the tranquility view
+
+* Updated copyright message
+
+--------------------------------
+
 ## Version 3.0.13:
 
 * Fixed problem with TITLE/HEAD elements being removed because their

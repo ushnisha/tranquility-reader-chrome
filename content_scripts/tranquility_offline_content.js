@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,6 +66,7 @@ function requestAllOfflineContent() {
     
 function displayOfflinePages(offline_data) {
 
+    checkIfTranquilized();
     document.body.addEventListener("click", handleClickEvent, false);
     appendOfflinePageDetails(offline_data);
 }
@@ -174,7 +175,8 @@ function displayDocFromDB(cached_doc, thisURL) {
 
 
 function displayExportLink(offline_data) {
-    
+
+    checkIfTranquilized();
     console.log("Got to the point of displaying offline data...");
         
     let links_div = document.getElementById('tranquility_offline_links');
@@ -209,6 +211,7 @@ function displayExportLink(offline_data) {
 
 function displayImportPage() {
     
+    checkIfTranquilized();
     console.log("Got to the point of importing offline data...");
         
     let links_div = document.getElementById('tranquility_offline_links');
@@ -263,4 +266,15 @@ function loadOfflineContentInNewTab() {
       {
           "action": "RunTranquilityViewOfflinePages"
       });
+}
+
+function checkIfTranquilized() {
+    let tranquilized = document.getElementById('tranquility_outer_container');
+    if (tranquilized == undefined) {
+        console.log("Page not tranquilized.  Removing all elements");
+        let docBody = document.body;
+        while(docBody.firstChild) {
+            docBody.removeChild(docBody.firstChild);
+        }
+    }
 }

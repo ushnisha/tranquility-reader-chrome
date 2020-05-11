@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,6 +71,18 @@ let processMessage = function (message) {
         console.log("Trying to browse in tranquil browsing mode: " + message.url);
         loadLinkAndRunTranquility(message.url, "Run");
     }
+    else if (message.action == "ChangeTranquilityBrowserActionIcon") {
+        console.log("Changing browser action icon");
+        console.log(message.iconname);
+        changeBrowserActionIcon(message.iconname);
+    }
+    else if (message.action == "getOSVersion") {
+        getOSVersion();
+    }
+    else if (message.action == "openOptionsPage") {
+        console.log("Opening options Page");
+        openOptionsPage();
+    }
     else {
         console.log("Unsupported message: " + message);
     }
@@ -81,5 +93,11 @@ browser.runtime.onMessage.addListener(processMessage);
 browser.commands.onCommand.addListener(function(command) {
     if (command == "run-tranquility") {
         runTranquility("Run");
+    }
+    else if (command == "show-tranquility-preferences") {
+        openOptionsPage();
+    }
+    else if (command == "show-tranquility-offline-pages") {
+        displayTranquilityOfflinePages();
     }
 });

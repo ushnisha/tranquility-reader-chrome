@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,12 +36,24 @@
   <body>
     <div class="tranquility_options_panel"> 
 
-        <h2>Export/Import Offline Pages:</h2>
+        <h2>View/Export/Import Offline Pages:</h2>
         <div class="tranquility_options_section">
             <div class="tranquility_options_row"> 
+                <label id="tranquility_view_offline_pages" class="tranquility_view_offline_pages">View</label>
                 <label id="tranquility_export_offline_pages" class="tranquility_export_offline_pages">Export</label> 
                 <label id="tranquility_import_offline_pages" class="tranquility_import_offline_pages">Import</label> 
             </div> 
+        </div>
+
+        <h2>Select Toolbar Icon:</h2>
+        <div class="tranquility_options_section">
+            <div class="tranquility_options_row">
+                <label for="tranquility_browser_action_icon">Browser Action Icon:</label>
+                <select id="tranquility_browser_action_icon" class="icon">
+                    <option value="default">Default</option>
+                    <option value="grayscale">Grayscale</option>
+                </select>
+            </div>
         </div>
 
         <h2>Preconfigured Display Formats:</h2>

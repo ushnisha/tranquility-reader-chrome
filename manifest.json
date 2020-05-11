@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "__MSG_extensionName__",
-    "version": "3.0.13",
+    "version": "3.0.16",
 
     "description": "__MSG_extensionDescription__",
     "homepage_url": "https://tranquility.ushnisha.com/",
@@ -27,6 +27,7 @@
     },
 
     "web_accessible_resources": [
+        "background/tranquility.html",
         "css/tranquility.css",
         "icons/*.png"
     ],
@@ -47,9 +48,21 @@
     "commands": {
       "run-tranquility": {
         "suggested_key": {
-          "default": "Ctrl+Shift+Y"
+          "default": "Ctrl+Shift+T"
         },
         "description": "__MSG_extensionCommandRunDescription__"
+      },
+      "show-tranquility-preferences": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+J"
+        },
+        "description": "__MSG_extensionCommandShowPreferencesDescription__"
+      },
+      "show-tranquility-offline-pages": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+K"
+        },
+        "description": "__MSG_extensionCommandShowOfflinePagesDescription__"
       }
     },
     

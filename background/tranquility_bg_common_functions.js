@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -125,7 +125,7 @@ function insertContentScriptsAndCSSAndAction(tabId, action) {
                                 // restore the original zoom in a straightforward manner given that
                                 // we support a tranquil browsing mode.
                                 //
-                                //setZoom(1);
+                                setZoomSettings();
 
                                 runAction(tabId, action);
                             }
@@ -249,6 +249,20 @@ function loadLinkAndRunTranquility(thisURL, mode) {
 
 }
 
+function setZoomSettings() {
+
+    let onZoomSetting = function() {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            setZoom(1);
+        }
+    }
+
+    let zoomSettings = browser.tabs.setZoomSettings({mode: "manual"}, onZoomSetting);
+}
+
 function setZoom(zoom) {
     
     let onSetZoom = function () {
@@ -260,6 +274,28 @@ function setZoom(zoom) {
     let setting = browser.tabs.setZoom(zoom, onSetZoom);
 }
 
+function getIconFile(iconname) {
+    let iconfile = "tranquility-32.png";
+    if (iconname == "default") {
+        iconfile = "tranquility-32.png";
+    }
+    else if (iconname == "grayscale") {
+        iconfile = "tranquility-32-grayscale.png";
+    }
+    return iconfile;
+}
+
+function changeBrowserActionIcon(iconname) {
+    let onChanging = function() {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+    }
+
+    let iconfile = getIconFile(iconname);
+
+    let changing = browser.browserAction.setIcon({"path": "icons/" + iconfile}, onChanging);
+}
 
 // On installation check to see if an option is gettable; if not, set that option
 function handleInstalled(details) {
@@ -309,6 +345,70 @@ function initializeOption(opt_name, opt_value) {
     let getting = browser.storage.local.get(opt_name, onGettingSuccess);
 }
 
+function setBrowserActionIcon() {
+
+    let onGettingSuccess = function(result) {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            if (result.tranquility_browser_action_icon != null) {
+                let onSetting = function() {
+                    if (browser.runtime.lastError) {
+                        console.log(browser.runtime.lastError);
+                    }
+                }
+                console.log(result.tranquility_browser_action_icon);
+                let iconfile = getIconFile(result.tranquility_browser_action_icon);
+                console.log(iconfile);
+                let setting = browser.browserAction.setIcon({"path": "icons/" + iconfile}, onSetting);
+            }
+        }
+    }
+
+    let getting = browser.storage.local.get("tranquility_browser_action_icon", onGettingSuccess);
+}
+
+
+function getOSVersion() {
+
+    let onGetting = function(result) {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            if (result.os != null) {
+                browser.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                    browser.tabs.sendMessage(tabs[0].id, {"tranquility_action": "UpdateOSVersion",
+                                                          "osVersion": result.os});
+                });
+            }
+        }
+    }
+
+    let getting = browser.runtime.getPlatformInfo(onGetting);
+}
+
+
+function openOptionsPage() {
+
+    let onOpening = function(result) {
+        if (browser.runtime.lastError) {
+            console.log(browser.runtime.lastError);
+        }
+        else {
+            console.log("Opened options page");
+        }
+    }
+
+    let openOptionsPage = browser.runtime.openOptionsPage(onOpening);
+}
+
+
+function handleStartup() {
+  setBrowserActionIcon();
+}
 
 browser.browserAction.onClicked.addListener(browserAction);
 browser.runtime.onInstalled.addListener(handleInstalled);
+browser.runtime.onStartup.addListener(handleStartup);

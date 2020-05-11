@@ -4,7 +4,7 @@
  * cluttered web pages
  **********************************************************************
 
-   Copyright (c) 2012-2019 Arun Kunchithapatham
+   Copyright (c) 2012-2020 Arun Kunchithapatham
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -163,7 +163,7 @@ function restoreOptions() {
                       "tranquility_link_color", "tranquility_annotation_highlight_color",
                       "tranquility_font_name", "tranquility_font_size", 
                       "tranquility_reading_width", "tranquility_line_height", 
-                      "tranquility_text_align"];
+                      "tranquility_text_align", "tranquility_browser_action_icon"];
 
     // Set forms with values from storage.local (should exist since these were set during installation)
 
@@ -207,6 +207,9 @@ function restoreOptions() {
                     else if (opt_name == "tranquility_text_align") {
                         document.getElementById(elem_name).value = result.tranquility_text_align;
                     }
+                    else if (opt_name == "tranquility_browser_action_icon") {
+                        document.getElementById(elem_name).value = result.tranquility_browser_action_icon;
+                    }
                 }
             }
         };
@@ -245,6 +248,13 @@ function loadPresetFormats() {
 
 }
 
+function callViewTranquilityOfflinePages() {
+    browser.runtime.sendMessage(
+      {
+          "action": "RunTranquilityViewOfflinePages"
+      });
+}
+
 function callExportTranquilityOfflinePages() {
     browser.runtime.sendMessage(
       {
@@ -261,10 +271,26 @@ function callImportTranquilityOfflinePages() {
     window.close();
 }
 
+function setBrowserActionIcon() {
+
+    let idx = document.getElementById("tranquility_browser_action_icon").selectedIndex;
+    let selOpt = document.getElementById("tranquility_browser_action_icon").options[idx].value;
+
+    browser.storage.local.set({tranquility_browser_action_icon: selOpt});
+
+    browser.runtime.sendMessage(
+        {
+            "action": "ChangeTranquilityBrowserActionIcon",
+            "iconname": selOpt
+        });
+}
+
 
 document.addEventListener("DOMContentLoaded", restoreOptions);
 document.getElementById("tranquility_save_changes").addEventListener("click", saveOptions);
 document.getElementById("tranquility_delete_preset").addEventListener("click", deletePreset);
+document.getElementById("tranquility_view_offline_pages").addEventListener("click", callViewTranquilityOfflinePages);
 document.getElementById("tranquility_export_offline_pages").addEventListener("click", callExportTranquilityOfflinePages);
 document.getElementById("tranquility_import_offline_pages").addEventListener("click", callImportTranquilityOfflinePages);
 document.getElementById("tranquility_preset_combination").addEventListener("change", loadPresetFormats);
+document.getElementById("tranquility_browser_action_icon").addEventListener("change", setBrowserActionIcon);
