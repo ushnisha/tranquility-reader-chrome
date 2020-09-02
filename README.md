@@ -13,7 +13,7 @@ Please try the built in "Reader Mode" first and then consider
 Tranquility Reader only if some of the features available only in
 Tranquility Reader are critical for you.
 
-## To use Tranquilityi Reader, you can:
+## To use Tranquility Reader, you can:
 
 * Click on the navigation-bar icon to transform the page
 
@@ -51,6 +51,27 @@ Tranquility Reader are critical for you.
 * Transform only a portion of the webpage by highlighting the text 
   and then running Tranquility (right click context menu 
   option - "Tranquilize Selection".  Available from 3.0.7)
+
+
+## Differences from Firefox version of Tranquility Reader:
+
+* The Chrome Webstore review process has become more demanding with
+  longer review times for certain permissions (like "<all_urls">) due
+  to which this permission is no longer requested
+
+* Due to above, when left clicking on a link in the Tranquility view,
+  only links within the same domain will be opened in the Tranquility
+  view; other webpages will show a red color progress bar to indicate
+  that Chrome is disallowing this behaviour.  Clicking a second time
+  will open the link without processing it.
+
+* Also, the right click context menu to open a link in a new tab and
+  then transform the page into the Tranquility Reader view will also
+  not work now (without the "<all_urls>" permission).
+
+* An attempt will be made soon to request the "<all_urls>" permission
+  in the next version, but if this is rejected by the Chrome webstore,
+  the extension will no longer support this functionality.
 
 
 ## License & Copyright:
