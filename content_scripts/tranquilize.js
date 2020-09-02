@@ -38,8 +38,6 @@ var osVersion = null;
 
 function tranquilize(request, sender, sendResponse) {
 
-    requestOSVersion();
-
     if (request.tranquility_action === 'Run') {
         console.log("Called to run Tranquility at: " + new Date());
         RunOnLoad();
@@ -102,6 +100,9 @@ function tranquilize(request, sender, sendResponse) {
 }
 
 function RunOnLoad() {
+
+    requestOSVersion();
+
     currentURL = location.toString();
     // If we have already run tranquility, then just toggle back to the original webpage (un-tranquilize the page)
     if (document.body.getElementsByClassName("tranquility").length > 0) {
@@ -193,7 +194,7 @@ function processXMLHTTPRequest(url, saveOffline) {
 
     // Handle corner case to avoid mixed content security warnings/errors
     let getURL = url;
-    if (getURL.substr(5) == 'https') {
+    if (getURL.substr(0,5) == 'https') {
         console.log(getURL);
         getURL = getURL.replace(/^http\:/, 'https:');
         console.log(getURL);
@@ -245,20 +246,93 @@ function processResponse (oXHRDoc, thisURL, saveOffline) {
 
 function processContentDoc(contentDoc, thisURL, saveOffline) {
 
-    // Remove all event handlers by cloning every single element
-    let allElems = contentDoc.getElementsByTagName("*");
-    for (let i = 0; i < allElems.length; i++) {
-         allElems[i].parentNode.replaceChild(allElems[i].cloneNode(true), allElems[i]);
+    // Remove all event handlers by "deep" cloning the document
+    // instead of cloning each element (saves some time and
+    // the code is cleaner); now cloning the entire document
+    // instead of just cloning only the body
+    //
+    let clonedDoc = contentDoc.cloneNode(true);
+    document.replaceChild(clonedDoc.documentElement, document.documentElement);
+
+    contentDoc = document;
+
+    // Remove all script tags
+    //
+    let scriptTags = ["SCRIPT", "NOSCRIPT"];
+    for(let i=0; i<scriptTags.length; i++) {
+        removeTag(contentDoc, scriptTags[i]);
     }
 
+    // Now replace document.documentElement; It looks like we need this step for
+    // the window.getComputedStyle() function to work correctly
+    // we can then copy over the document to the contentDoc variable and continue
+    // as before
+    //
+    document.replaceChild(contentDoc.documentElement, document.documentElement);
+    contentDoc = document;
+
+    // First get a dfs search to index every single element in the
+    // document
+    let indexMap = {};
+    indexElements(indexMap, contentDoc.body);
+
+    // Backup any title/heading related tags to restore in case they are removed
+    // by the deletion logic
+    //
+    let hElemsMap = {};
+    cloneHElems(hElemsMap, contentDoc);
+
+    // Remove some elements that are typically like hidden elements
+    // but can add to the text size of a document; remove them so that
+    // their effect on later logic (textContent.length value) is minimized
+    //
+    let likeHidden = ["HEADER", "FOOTER", "NAV", "SVG", "PATH", "LINK", "STYLE"];
+    for (let i = 0; i < likeHidden.length; i++) {
+        removeTag(contentDoc, likeHidden[i]);
+    }
+
+    // Remove unnecessary whitespaces and comments
+    removeWhiteSpaceComments(contentDoc);
+    //console.log("Removed white spaces and comments");
+
+    // Cleanup the head and unnecessary tags
     // Delete All Hidden Elements before doing anything further
     // These could be hidden images, div, spans, spacers, etc...
     // Delete any content that has display = 'none' or visibility == 'hidden'
     // This was originally done only for spacer images, but seems like a meaningful thing
     // to do for all elements, given that all scripts are also deleted in the Tranquility view
     //
+
+    // First get the size of the document before removing hidden content and make a clone
+    // in case we need to revert
+    //
+    let sizeBeforeDelHidden = computeSize(contentDoc.documentElement);
+    let bkpContentDoc = contentDoc.cloneNode(true);
+
     deleteHiddenElements(contentDoc, "*");
     console.log("Removed Hidden elements");
+
+    let sizeAfterDelHidden = computeSize(contentDoc.documentElement);
+
+    console.log(sizeBeforeDelHidden, sizeAfterDelHidden);
+
+    // If the content after deletion of hidden elements is less than 10% of the
+    // content before deletion of hidden elements and the size after deletion
+    // is less than 200 characters, then it is possible that the
+    // website is hiding content within hidden elements
+    //
+    // Revert to the document state before this step and continue...
+    //
+    if (sizeAfterDelHidden < 200 && sizeAfterDelHidden / sizeBeforeDelHidden < 0.1) {
+        console.log("Problem removing hidden elements...");
+        console.log("Website may be hiding content within hidden elements...");
+        console.log("Reverting to backedup document and continuing...");
+        console.log("Size Before: ", sizeBeforeDelHidden, "Size After: ", sizeAfterDelHidden);
+        document.replaceChild(bkpContentDoc.documentElement, document.documentElement);
+        contentDoc = document;
+    }
+
+    console.log("Size: ", computeSize(contentDoc.documentElement));
 
     // Remove zero sized images; this is just another way of hiding elements
     // otherwise, these can get cloned and reappear
@@ -268,15 +342,6 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
     //
     deleteZeroSizeImages(contentDoc);
     console.log("Removed Zero Sized Images");
-
-    // First get a dfs search to index every single element in the
-    // document
-    let indexMap = {};
-    indexElements(indexMap, contentDoc.body);
-
-    // Clone all the image nodes for later insertion
-    let imgCollection = {};
-    cloneImages(contentDoc.body, imgCollection);
 
     // Ensure that we set a base element before we replace the
     // web page with the new content; otherwise, relative URL
@@ -303,7 +368,7 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
     for (let i = all_links.length - 1; i >= 0; i--) {
          let onclickVal = all_links[i].getAttribute('onclick');
          if (onclickVal != null) {
-             removeNodeRecursive(all_links[i]);
+             all_links[i].setAttribute('onclick', "void(0);");
          }
     }
 
@@ -312,38 +377,108 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
     
     console.log("Got supporting links...");
 
+    // If there is a single "MAIN" tag, then replace the entire document content with just the
+    // contents of the main tag.  Trust that the content creator has done the correct thing.
+    // If and article tag exists, then...
     // If there is a single "ARTICLE" tag, then replace the entire document content with just the
     // contents of the article.  Trust that the content creator has done the correct thing
+    // (this is because articles are supposed to be within the main tag)
     //
+    let mainsOrArticle = false;
+    let mains = contentDoc.getElementsByTagName("main");
     let articles = contentDoc.getElementsByTagName("article");
+    if (mains.length == 1) {
+        let docBody = contentDoc.body;
+        let mainContent = mains[0].cloneNode(true);
+        if (computeSize(mainContent) > 200) {
+            while (docBody.firstChild) {
+                docBody.removeChild(docBody.firstChild);
+            }
+            docBody.appendChild(mainContent);
+            console.log("Replaced body content with main contents...");
+            mainsOrArticle = true;
+        }
+    }
     if (articles.length == 1) {
         let docBody = contentDoc.body;
         let mainArticle = articles[0].cloneNode(true);
-        while (docBody.firstChild) {
-            docBody.removeChild(docBody.firstChild);
+        if (computeSize(mainArticle) > 200) {
+            while (docBody.firstChild) {
+                docBody.removeChild(docBody.firstChild);
+            }
+            docBody.appendChild(mainArticle);
+            console.log("Replaced body content with article contents...");
+            mainsOrArticle = true;
         }
-        docBody.appendChild(mainArticle);
     }
+    console.log("Processed article/main content...");
+    console.log("Size: ", computeSize(contentDoc.documentElement));
 
     // Remove unnecessary whitespaces and comments
-    removeWhiteSpaceComments(contentDoc);
-
-    console.log("Removed white spaces and comments");
+    //removeWhiteSpaceComments(contentDoc);
+    //console.log("Removed white spaces and comments");
     
     // Cleanup the head and unnecessary tags
     let delTags = ["STYLE", "LINK", "META", "SCRIPT", "NOSCRIPT", "IFRAME",
                    "SELECT", "DD", "INPUT", "TEXTAREA", "HEADER", "FOOTER",
                    "NAV", "FORM", "BUTTON", "PICTURE", "FIGURE", "SVG"];
     for(let i=0; i<delTags.length; i++) {
-        removeTag(contentDoc, delTags[i]);
+        let delTagExceptions = ["PICTURE", "FIGURE", "SVG"];
+        if (mainsOrArticle) {
+            if (!delTagExceptions.includes(delTags[i])) {
+                removeTag(contentDoc, delTags[i]);
+            }
+        }
+        else {
+            removeTag(contentDoc, delTags[i]);
+        }
+        console.log("Size: ", computeSize(contentDoc.documentElement));
     }
-    
+
     console.log("Cleaned up unnecessary tags and headers");
-   
+    console.log("Size: ", computeSize(contentDoc.documentElement));
+
+    // Cleanup elements that have classnames that are typically not main content
+    // This was included as a hidden element via css @media settings in 3.0.18
+    // but moving it to a regexp for more flexibility (borrowing idea from readability)
+    // since it is easier to undo the cleanup in javascript or add logic to skip
+    // certain elements that seem to have actual content in them
+    //
+    let unlikelyCandidates = /^social|soc|^header|footer|related|recommended|sponsored|action|navigation|promo|adCaption|comment|dfp|adHolder|billboard|slide|-ad-|_ad_|control-bar|disqus|more-stories/i
+    let nodeIter = getNodeIterator(contentDoc.body, unlikelyCandidates, "className");
+    let node = null;
+    while ((node = nodeIter.nextNode())) {
+        let exceptions = ["BODY", "MAIN", "ARTICLE"];
+        if (exceptions.includes(node.nodeName.toUpperCase())) {
+            continue;
+        }
+        let docSize = computeSize(contentDoc.body);
+        let nodeSize = computeSize(node);
+
+        if (nodeSize/docSize > 0.9) {
+            continue;
+        }
+        console.log("Removing node with classname: ", node.className);
+        console.log(nodeSize, docSize);
+        node.parentNode.removeChild(node);
+    }
+
+    console.log("Cleaned up unlikely candidates");
+    console.log("Size: ", computeSize(contentDoc.documentElement));
+
     // Reformat the header and use custom css
     reformatHeader(contentDoc);
 
     console.log("Reformatted headers...");
+
+    // Moving the cloneImage calls after we have
+    // cleaned up the unnecessary tags.  This can help filter of any
+    // unneccessary icons ad images that are in these deleted tags
+    // and get added back later.
+
+    // Clone all the image nodes for later insertion
+    let imgCollection = {};
+    cloneImages(contentDoc.body, imgCollection);
 
     // Processing for ads related DIV's; several websites seem to use LI elements
     // within the ads DIV's, or for navigation links which are not required in the 
@@ -356,7 +491,8 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
     }
 
     console.log("Pruned the AdsTag");
-   
+    console.log("Size: ", computeSize(contentDoc.documentElement));
+
     // Cleanup select tags that have content length smaller than minSize 
     // This helps clean up a number of junk DIV's before we get to real content
     // Can be made a parameter in later versions
@@ -368,7 +504,7 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
     for(let p=0; p < pruneTagList.length; p++) {
         pruneTag(contentDoc, pruneTagList[p], 0.0, minSize, totalSize);
     } 
-    // Next run with minsize 200 (for a reduced subset of the tags)
+    // Next run with minsize 5 (for a reduced subset of the tags)
     // Removed TD, TABLE, and DD for now
     pruneTagList = ["FORM", "DIV", "ARTICLE", "SECTION"];
     minSize = 5;
@@ -401,7 +537,7 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
         
     // Format the tags in a nice readable font/style using custom css loaded in header
     let reformatTagList = ["UL", "OL", "LI", "DIV", "SPAN", "P", "FONT", "BODY", "H1", 
-                           "H2", "H3", "PRE", "TABLE", "ARTICLE", "SECTION"];
+                           "H2", "H3", "PRE", "TABLE", "ARTICLE", "SECTION", "MAIN"];
     for(let r=0; r < reformatTagList.length; r++) {
         reformatTag(contentDoc, reformatTagList[r]);
     }
@@ -410,152 +546,45 @@ function processContentDoc(contentDoc, thisURL, saveOffline) {
    
     // Time to add back the images that we have cloned
     //
-    addBackImages(contentDoc, imgCollection, indexMap);
+    addBackElems(contentDoc, "IMG", imgCollection, indexMap);
 
+    // Add back any title/h1 tags we backup that were removed incorrectly
+    addBackElems(contentDoc, "H1", hElemsMap, indexMap);
 
-    // Add the "Menu Items" to the top of the page
-    let menu_div = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_menu', id:'tranquility_menu', align:'center' } });
+    console.log("Reinserted images and H1 tags...");
 
-    // Finally, beautify with two container DIV's to center align the content
-    let cdiv = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_container', id:'tranquility_container', align:'center' } });    
-    let cdiv_inner = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_innercontainer', id:'tranquility_innercontainer' } });
-    cdiv.appendChild(menu_div);
-    cdiv.appendChild(cdiv_inner);
-    contentDoc.body.appendChild(cdiv);
-
-
-    // Add the masking div for effects
-    let mdiv = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_masker', id:'tranquility_masker' } });
-    contentDoc.body.appendChild(mdiv);
-        
-    // Move the other divs into cdiv
-    // Code modified from version 1.1.12 to take care of a corner case where the 
-    // tranquility version had all <p> elements in reverse order
-    let bchildren = contentDoc.body.childNodes;
-    for(let i=0; i<bchildren.length; i++) {
-        if((bchildren[i].id !== 'tranquility_container') && 
-           (bchildren[i].id !== 'tranquility_innercontainer')) {
-            cdiv_inner.appendChild(bchildren[i]);
-            // decrement count since we have moved element i from the body to cdiv_inner
-            // otherwise, we will only add alternate elements
-            i--; 
-        }
-    }
-
-    // Add the navigation links div into the tranquility_innercontainer
-    //    
-    if(computeSize(supporting_links["nav_links"]) > 0) {
-        let p_elem = contentDoc.createElement("p");
-        cdiv_inner.insertBefore(p_elem.cloneNode(true), cdiv_inner.firstChild);
-        cdiv_inner.appendChild(p_elem.cloneNode(true));
-        let bot_nav_links_div = supporting_links["nav_links"].cloneNode(true);
-        bot_nav_links_div.setAttribute('id', 'tranquility_nav_links_bot');
-        cdiv_inner.appendChild(bot_nav_links_div);
-    }
-    
-    // Provide "more links" functionality
-    //
-    let links_button_div = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_more_links_btn', id:'tranquility_more_links_btn' } });
-    links_button_div.textContent = browser.i18n.getMessage("morelinks");
-    menu_div.appendChild(links_button_div);
-
-    // Remove links from the links_div that are already a part of the main document
-    // This will prevent duplication of links and remove links that are out of
-    // context as well as comment style links from repeating in the "More Links" div
-    //
-    let links_div = removeDuplicateAndBadLinks(contentDoc, thisURL, supporting_links["links_div"].cloneNode(true));
-
-    // Append the links div
-    links_div.style.visibility = 'hidden';
-    contentDoc.body.appendChild(links_div);
-
-    // Allow saving offline content (add "Read Later" button)
-    //
-    let readlater_button_div = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_read_later_btn', id:'tranquility_read_later_btn'} });
-    readlater_button_div.textContent = browser.i18n.getMessage("readlater");
-    menu_div.appendChild(readlater_button_div);
-
-    // Provide "Offline links" functionality
-    //
-    let offline_button_div = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_offline_links_btn', id:'tranquility_offline_links_btn' } });
-    offline_button_div.textContent = browser.i18n.getMessage("offlinelinks");
-    offline_button_div.setAttribute('data-active-link', thisURL);
-    menu_div.appendChild(offline_button_div);
-
-    let offline_links_div = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_offline_links', id:'tranquility_offline_links' } });
-    offline_links_div.style.visibility = 'hidden';
-    contentDoc.body.appendChild(offline_links_div);
-  
-    // Provide "View Notes" functionality
-    //
-    let viewnotes_button_div = createNode(contentDoc, {type: 'DIV', attr: { class:'tranquility_viewnotes_btn', id:'tranquility_viewnotes_btn' } });
-    viewnotes_button_div.textContent = browser.i18n.getMessage("viewnotes");
-    menu_div.appendChild(viewnotes_button_div);
-
-    hideMenuDiv(contentDoc);
-
-    // Add a div to hold some useful links/icons/functionality
-    let quick_tools_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_quick_tools_div', id:'tranquility_quick_tools_div' } });
-    contentDoc.body.insertBefore(quick_tools_div, contentDoc.body.firstChild);
-
-    // Add a link to the preferences page for quick access rather than to go through about:addons
-    let prefs_link_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_prefs_link_div', id:'tranquility_prefs_link_div' } });
-    prefs_link_div.setAttribute('title', browser.i18n.getMessage("prefslink"));
-    let prefs_symbol = '\u2699';
-    prefs_link_div.textContent = prefs_symbol;
-    prefs_link_div.addEventListener("click", handleShowPreferencesClickEvent, false);
-    quick_tools_div.appendChild(prefs_link_div);
-
-    // Add a link to the original webpage for quick navigation/copying at the top of the page
-    let original_link_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_original_link_div', id:'tranquility_original_link_div' } });
-    original_link_div.setAttribute('title', browser.i18n.getMessage("originallink"));
-    let original_link_img = createNode(contentDoc, {type: 'IMG', attr: {class:'tranquility_original_link_img', id:'tranquility_original_link_img', height: '40px', width:'30px', src: browser.extension.getURL("icons/tranquility_link.png")}});
-    original_link_img.alt = browser.i18n.getMessage("originallink");
-    original_link_div.appendChild(original_link_img);
-    original_link_div.addEventListener("click", handleLoadOriginalLinkClickEvent, false);
-    quick_tools_div.appendChild(original_link_div);
-
-    // Add a button to save page as PDF file
-    //
-    if (osVersion != null && osVersion != 'mac' && osVersion != 'android') {
-        let saveaspdf_div = createNode(contentDoc, {type: 'DIV', attr: {class:'tranquility_saveaspdf_div', id:'tranquility_saveaspdf_div' } });
-        saveaspdf_div.setAttribute('title', browser.i18n.getMessage("saveaspdf"));
-        let saveaspdf_img = createNode(contentDoc, {type: 'IMG', attr: {class:'tranquility_saveaspdf_img', id:'tranquility_saveaspdf_img', height: '40px', width:'40px', src: browser.extension.getURL("icons/tranquility_pdf.png")}});
-        saveaspdf_img.alt = browser.i18n.getMessage("saveaspdf");
-        saveaspdf_div.appendChild(saveaspdf_img);
-        saveaspdf_div.addEventListener("click", handleSaveAsPDFClickEvent, false);
-        quick_tools_div.appendChild(saveaspdf_div);
-    }
-
-    console.log("Added all custom buttons and menus");
-    
     // Remove target attribute from all anchor elements
     // this will enable opening the link in the same browser tab
     //
     removeAnchorAttributes(contentDoc);
     console.log("Removed Anchor attributes");
-    console.log("Finished processing document");
-    
-    // Now, we are ready to replace the current webpage document with the processed contentDoc
-    //
-    // First remove all event listeners from the old body by replacing it with the clone
-    let old_body = document.body;
-    // sometimes, document has not even loaded the body; in these cases, there is nothing to do
-    if (old_body) {
-        let new_body = old_body.cloneNode(true);
-        document.documentElement.replaceChild(new_body, old_body);
-    }
 
-    // Next replace the documentElement with the processed contentDoc
-    document.replaceChild(contentDoc.documentElement, document.documentElement);
+    // Create the tranquility UI related elements
+    create_ui_elements(contentDoc, supporting_links, thisURL);
+    console.log("Created Tranquility UI elements");
+
+    console.log("Finished processing document");
 
     // Finally apply all preferences and add Event listeners
     applyAllTranquilityPreferences();
     addBackEventListeners();
 
+    // Try one last time to remove any hidden/script elements that did not get removed for any reason
+    for (let i = 0; i < scriptTags.length; i++) {
+        removeTag(contentDoc, scriptTags[i]);
+    }
+    for (let i = 0; i < likeHidden.length; i++) {
+        removeTag(contentDoc, likeHidden[i]);
+    }
+
     if (saveOffline) {
         saveContentOffline(thisURL, document.cloneNode(true));
     }
+
+    // Scroll to the top of the page (this is required if tranquility is invoked when
+    // the user has scrolled down the page and then invokes tranquility reader
+    //
+    window.scroll(0, 0);
     
 }
 
@@ -577,36 +606,30 @@ function removeWhiteSpaceComments(cdoc) {
             let allText = cnodes[i].data;
             cnodes[i].data = allText.replace(/\s{2,}/g, ' ');
         }
-        if(cnodes[i].nodeType == 8) {
+        if(cnodes[i].nodeType == 8 || cnodes[i].nodeType == 4) {
             cnodes[i].parentNode.removeChild(cnodes[i]);
         }
     }
 }
 
+
 function removeTag(cdoc, tagString) {
 
-    let c = cdoc.getElementsByTagName(tagString);
-    let len = c.length;
-    let tElem;
-
-    for(let dt=0; dt < len; dt++) {
-        tElem = c[len-dt-1];
-        // Do not delete iframes with links to youtube videos
-        if((tagString == "IFRAME") && (tElem.src.search(/youtube/) != -1)) {
-            continue;
-        }
-        
-        // Do not delete this element if it is either a H1 tag 
-        //(or contains child elements which are H1)
-        let h1elems = tElem.getElementsByTagName("H1");
-        if(tElem.nodeName == "H1" || h1elems.length > 0) 
-            continue;
-
-        if(tElem.id == undefined || tElem.id.substr(0,11) !== "tranquility") {
-            tElem.parentNode.removeChild(tElem);
+    console.log("Removing items with tag: ", tagString);
+    let regexp = new RegExp(tagString, 'i');
+    console.log(cdoc.body.getElementsByTagName(tagString).length);
+    let nodeIter = getNodeIterator(cdoc.body, regexp, "nodeName");
+    let node = null;
+    let ncounter = 0;
+    while ((node = nodeIter.nextNode())) {
+        ncounter += 1;
+        if(node.id == undefined || node.id.substr(0,11) !== "tranquility") {
+            node.parentNode.removeChild(node);
         }
     }
+    console.log("Removed ", ncounter, " items with tag: ", tagString);
 }
+
 
 function reformatHeader(cdoc) {
     
@@ -657,12 +680,6 @@ function pruneAdsTag(cdoc, url, tagString, thresholdPctg, totalSize, imgCollecti
     for(let i=0; i < len; i++) {
         tElem = c[len-i-1];
 
-        // If the DIV has a H1 child, then we want to retain the article
-        // heading and not delete it.
-        let h1elems = tElem.getElementsByTagName("H1");
-        if(h1elems.length > 0) 
-            continue;
-
         let cLength = computeSize(tElem);
         let pctg = cLength/totalSize; 
         // If the DIV/SECTION/ARTICLE is empty remove it right away
@@ -698,8 +715,9 @@ function pruneAdsTag(cdoc, url, tagString, thresholdPctg, totalSize, imgCollecti
                 let images = tElem.getElementsByTagName('img');
                 if (images.length > 0) {
                     for (let k = 0; k < images.length; k++) {
-                        if (images[k].src in imgCollection) {
-                            delete imgCollection[images[k].src];
+                        let idx = images[k].getAttribute('data-dfsIndex');
+                        if (idx in imgCollection) {
+                            delete imgCollection[idx];
                         }
                     }
                 }
@@ -979,68 +997,6 @@ function removeDuplicateAndBadLinks(cdoc, url, orig_links) {
     return orig_links.cloneNode(true);
 }
 
-function toggleMenuDisplay(cdoc) {
-
-    let expand_menu_btn = cdoc.getElementById('tranquility_expand_menu_btn');
-    if (expand_menu_btn != undefined) {
-        showMenuDiv(cdoc);
-    }
-    else {
-        hideMenuDiv(cdoc);
-    }
-}
-
-
-function showMenuDiv(cdoc) {
-    let menu_div = cdoc.getElementById('tranquility_menu');
-    menu_div.style.height = '50px';
-    menu_div.style.opacity = 1;
-    let menu_items = menu_div.childNodes;
-    for(let i=0; i < menu_items.length; i++) {
-        menu_items[i].style.visibility = 'visible';
-    };
-
-    // Delete the expand menu button and trigger a hide of the menu 
-    // within 'hideInTime' milliseconds
-    let hideInTime = 10000;
-    let expand_menu_btn = cdoc.getElementById('tranquility_expand_menu_btn');
-    if(expand_menu_btn != undefined) {
-        expand_menu_btn.parentNode.removeChild(expand_menu_btn);
-        setTimeout(function() {
-            hideMenuDiv(cdoc);
-        }, hideInTime);
-    }
-
-}
-
-
-function hideMenuDiv(cdoc) {
-
-    // This is the setTimeout function for hiding menu after loading a page
-    // either from the database or during the first tranquility conversion
-    
-    let menu_div = cdoc.getElementById('tranquility_menu');
-    // Hide all the menu items and reduce its height
-    let menu_items = menu_div.childNodes;
-    for(let i=0; i < menu_items.length; i++) {
-        menu_items[i].style.visibility = 'hidden';
-    }
-    menu_div.style.height = '0px';
-    menu_div.style.opacity = 0.1;
-
-    
-    // Provide a simple button to expand the menu if it is auto-minimized
-    let expandMenuString = browser.i18n.getMessage("expandMenuString");
-    let expand_menu_btn = cdoc.getElementById('tranquility_expand_menu_btn');
-    if (expand_menu_btn == undefined) {
-        let expand_menu_btn = createNode(cdoc, {type: 'DIV', attr: { title:expandMenuString, class:'tranquility_expand_menu_btn', 
-                                                                           id:'tranquility_expand_menu_btn' } });
-        expand_menu_btn.textContent = "(+)";
-        expand_menu_btn.addEventListener("click", handleExpandMenuButtonClickEvent, false);
-        cdoc.body.appendChild(expand_menu_btn);
-    }
-}
-
 
 function getAnchorNode(elem) {
 
@@ -1053,32 +1009,6 @@ function getAnchorNode(elem) {
             return urlString;
     }
     return urlString;
-}
-
-
-function hideLinksDiv(cdoc) {
-
-    let target = cdoc.getElementById('tranquility_links');
-    let masker = cdoc.getElementById('tranquility_masker');
-    if(target != undefined) { 
-        target.style.visibility = 'hidden';
-    }
-    if(masker != undefined) {
-        masker.style.visibility = 'hidden';
-    }
-}
-
-
-function hideOfflineLinksDiv(cdoc) {
-
-    let target = cdoc.getElementById('tranquility_offline_links');
-    let masker = cdoc.getElementById('tranquility_masker');
-    if(target != undefined) { 
-        target.style.visibility = 'hidden';
-    }
-    if(masker != undefined) {
-        masker.style.visibility = 'hidden';
-    }
 }
 
 
@@ -1132,9 +1062,12 @@ function getProgressBar(cdoc) {
 
 function indexElements(indexMap, node) {
 
+    if (node == null) return;
+
     indexMap[dfsIndex] = node;
     if (node.nodeType == 1) {
         node.setAttribute('data-dfsIndex', dfsIndex);
+        node.setAttribute('data-origClassName', node.className);
     }
     dfsIndex += 1;
     let children = node.childNodes;
@@ -1143,79 +1076,92 @@ function indexElements(indexMap, node) {
     }
 }
 
+
 function cloneImages(cdoc, collection) {
 
     // This function also preserves the original width/height of the images
     // in data fields
     let images = cdoc.getElementsByTagName('IMG');
     for (let i = 0; i < images.length; i++) {
+        console.log(images[i].src.substr(0,4));
+        if (images[i].src.substr(0,4) == "data") {
+            continue;
+        }
         let img = new Image();
+        let idx = images[i].getAttribute('data-dfsIndex');
         img.src = images[i].src;
-        img.setAttribute('data-dfsIndex', images[i].getAttribute('data-dfsIndex'));
+        img.setAttribute('data-dfsIndex', idx);
         img.alt = images[i].alt;
 
-        collection[images[i].src] = img;
+        collection[idx] = img;
         console.log(images[i].src + ": " + images[i].alt);
     }
 }
 
-function addBackImages(cdoc, imgs, indexMap) {
 
-    let images = cdoc.body.getElementsByTagName('IMG');
-    let imgMap = {};
-    for (let i = 0; i < images.length; i++) {
-        imgMap[images[i].src] = i;
+function addBackElems(cdoc, tagName, bkpElems, indexMap) {
+
+    let elems = cdoc.body.getElementsByTagName(tagName);
+    let elemMap = {};
+    for (let i = 0; i < elems.length; i++) {
+        let idx = elems[i].getAttribute('data-dfsIndex');
+        elemMap[idx] = i;
+        //console.log(idx, elems[i]);
     }
 
-    let children = cdoc.body.getElementsByTagName('*');
+    for (let key in bkpElems) {
 
-    for (let key in imgs) {
+        let elem = bkpElems[key];
 
-        let img = imgs[key];
-
-        // Skip adding back image if the current cleanup has already
-        // retained the original image
+        // Skip adding back element if the current cleanup has already
+        // retained the original element
         //
-        if (key in imgMap) {
+        //console.log(elem.getAttribute('data-dfsIndex'), elem);
+        if (key in elemMap) {
+            //console.log("Found duplicate key...: ", key);
             continue;
         }
 
-        console.log(key + ": " + imgs[key].alt);
-        // Should we include images without alt text?  Maybe these
-        // are not important and/or are advertisment/unrelated images?
-        //
-        //if (img.alt.length == 0) {
-        //    continue;
-        //}
-
-        let nextSibling = null;
-        let prevSibling = null;
-        let prevSiblingIdx = -1;
-        let imgIdx = parseInt(img.getAttribute('data-dfsIndex'));
-        for (let i = 0; i < children.length; i++) {
-            if (children[i].nodeType == 1) {
-                let idx = parseInt(children[i].getAttribute('data-dfsIndex'));
-                if (idx < imgIdx && idx > prevSiblingIdx) {
-                    prevSibling = children[i];
-                    prevSiblingIdx = idx;
-                }
-                if (idx > imgIdx) {
-                    nextSibling = children[i];
-                    break;
-                }
-            }
-            else {
-            }
-        }
-
-        if (nextSibling != null) {
-            nextSibling.insertAdjacentElement('beforebegin', img);
-        }
-        else if (prevSibling != null) {
-            prevSibling.insertAdjacentElement('afterend', img);
-        }
+        insertByDFSIndex(elem, cdoc);
     }
 }
+
+
+function insertByDFSIndex(elem, cdoc) {
+
+    let children = cdoc.body.getElementsByTagName("*");
+
+    elem.className = 'tranquility';
+
+    let nextSibling = null;
+    let prevSibling = null;
+    let prevSiblingIdx = -1;
+    let elemIdx = parseInt(elem.getAttribute('data-dfsIndex'));
+    console.log(elemIdx);
+    for (let i = 0; i < children.length; i++) {
+        if (children[i].nodeType == 1) {
+            let idx = parseInt(children[i].getAttribute('data-dfsIndex'));
+            if (idx < elemIdx && idx > prevSiblingIdx) {
+                prevSibling = children[i];
+                prevSiblingIdx = idx;
+            }
+            if (idx > elemIdx) {
+                nextSibling = children[i];
+                break;
+            }
+        }
+        else {
+        }
+    }
+
+    if (nextSibling != null) {
+        nextSibling.insertAdjacentElement('beforebegin', elem);
+    }
+    else if (prevSibling != null) {
+        prevSibling.insertAdjacentElement('afterend', elem);
+    }
+}
+
 
 // Remove a node recursively based on the text-content of its parent
 //
@@ -1231,17 +1177,20 @@ function removeNodeRecursive(thisNode) {
     }
 }
 
+
 // Remove any image elements that are not hidden, but have a height/width set to zero
 //
 function deleteZeroSizeImages(cdoc) {
     let images = cdoc.getElementsByTagName('IMG');
     for (let i = images.length-1; i >= 0; i--) {
         if (parseInt(images[i].getAttribute('height')) == 0 ||
-            parseInt(images[i].getAttribute('width')) == 0) {
+            parseInt(images[i].getAttribute('width')) == 0 ||
+            images[i].src.substr(0,4) == "data") {
             images[i].parentNode.removeChild(images[i]);
         }
     }
 }
+
 
 // Send a message to the background script to return the OS Version
 //
@@ -1258,6 +1207,38 @@ function updateOSVersion(version) {
     console.log("Updating osVersion to: " + version);
     osVersion = version;
 }
+
+
+function cloneHElems(hdict, cdoc) {
+
+    let hs = cdoc.getElementsByTagName("H1");
+    for (let i = 0; i < hs.length; i++) {
+        let elem = hs[i];
+        let idx = elem.getAttribute('data-dfsIndex');
+        hdict[idx] = elem.cloneNode(true);
+    }
+}
+
+
+function getNodeIterator(root, regexp, attr) {
+
+    return document.createNodeIterator(
+        root,
+
+        NodeFilter.SHOW_ALL,
+
+        { acceptNode: function(node) {
+            let nodeAttr = node.className;
+            if (attr == "nodeName") {
+                nodeAttr = node.nodeName;
+            }
+            if (regexp.test(nodeAttr)) {
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        }}
+    );
+}
+
 
 /*
  * Assign tranquilize() as a listener for messages from the extension.

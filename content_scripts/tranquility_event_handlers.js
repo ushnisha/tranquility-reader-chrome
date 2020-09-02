@@ -249,6 +249,19 @@ function handleShowPreferencesClickEvent(event) {
     });
 }
 
+function handlePageDownClickEvent(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    window.scrollBy(0, window.innerHeight);
+}
+
+function handlePageUpClickEvent(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    window.scrollBy(0, -window.innerHeight);
+}
+
+
 function handleClickEvent(event) {
 
     let urlStr = getAnchorNode(event.target);
@@ -340,7 +353,27 @@ function handleClickEvent(event) {
         let note = document.getElementById('tranquility_view_notes');
         note.parentNode.removeChild(note);
     }
+    else {
+        toggle_ui_controls_visibility();
+    }
 }
+
+function toggle_ui_controls_visibility() {
+
+    let targetted_controls = ["tranquility_quick_tools_div", "tranquility_page_down_div", "tranquility_page_up_div"];
+    for (let i = 0; i < targetted_controls.length; i++) {
+        let elem = document.getElementById(targetted_controls[i]);
+        let hideInTime = 10000;
+        if (elem.style.visibility == 'hidden') {
+            elem.style.visibility = 'visible';
+            setTimeout(function() {elem.style.visibility = 'hidden';}, hideInTime);
+        }
+        else {
+            elem.style.visibility = 'hidden';
+        }
+    }
+}
+
 
 function addBackEventListeners() {
 
@@ -361,8 +394,9 @@ function addBackEventListeners() {
         "tranquility_offline_link"          : handleLoadOfflineLinkClickEvent,
         "tranquility_expand_menu_btn"       : handleExpandMenuButtonClickEvent,
         "tranquility_saveaspdf_div"         : handleSaveAsPDFClickEvent,
-        "tranquility_prefs_link_div"        : handleShowPreferencesClickEvent
-
+        "tranquility_prefs_link_div"        : handleShowPreferencesClickEvent,
+        "tranquility_page_down_div"         : handlePageDownClickEvent,
+        "tranquility_page_up_div"           : handlePageUpClickEvent
     };
 
     // Add back click event listener to each of the eventElements

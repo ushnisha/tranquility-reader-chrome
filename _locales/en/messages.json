@@ -5,7 +5,7 @@
   },
   
   "extensionDescription" : {
-    "message"     : "Make a page readable",
+    "message"     : "Tranquility Reader improves the readability of web articles by removing unnecessary elements",
     "description" : "English description of the Tranquility Reader extension"
   },
 
@@ -184,6 +184,16 @@
   "saveaspdf" : {
     "message"     : "Save Page as PDF File",
     "description" : "Button to save the processed page to a PDF file"
+  },
+
+  "pageDown" : {
+    "message"     : "Scroll Down One Page",
+    "description" : "Button to scroll down one page"
+  },
+
+  "pageUp" : {
+    "message"     : "Scroll Up One Page",
+    "description" : "Button to scroll up one page"
   },
 
   "readLaterNotSupportedString" : {

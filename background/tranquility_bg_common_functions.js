@@ -111,31 +111,28 @@ function insertContentScriptsAndCSSAndAction(tabId, action) {
                 browser.tabs.executeScript(tabId, { matchAboutBlank: true, file: "/content_scripts/tranquility_annotations.js", runAt: "document_end"}, function (){
                     browser.tabs.executeScript(tabId, { matchAboutBlank: true, file: "/content_scripts/tranquility_offline_content.js", runAt: "document_end"}, function() {
                         browser.tabs.executeScript(tabId, { matchAboutBlank: true, file: "/content_scripts/tranquility_event_handlers.js", runAt: "document_end"}, function () {
-                            if (action == "PopulateOfflinePages") {
-                                db_getOfflinePagesList();
-                            }
-                            else if (action == "ExportOfflinePages") {
-                                console.log("Calling function to gather all offline content");
-                                db_getAllOfflineContent();
-                            }
-                            else {
-                                // Remove zoom since we want to use the Tranquility font sizes only
-                                // Unfortunately, this will mean that page zoom settings are lost for
-                                // future normal loads of the page.  I am unable to figure out a way to
-                                // restore the original zoom in a straightforward manner given that
-                                // we support a tranquil browsing mode.
-                                //
-                                setZoomSettings();
+                            browser.tabs.executeScript(tabId, { matchAboutBlank: true, file: "/content_scripts/tranquility_ui_elems.js", runAt: "document_end"}, function () {
+                                if (action == "PopulateOfflinePages") {
+                                    db_getOfflinePagesList();
+                                }
+                                else if (action == "ExportOfflinePages") {
+                                    console.log("Calling function to gather all offline content");
+                                    db_getAllOfflineContent();
+                                }
+                                else {
+                                    // Set zoom to 1 for this tab only
+                                    //
+                                    setZoomSettings();
 
-                                runAction(tabId, action);
-                            }
+                                    runAction(tabId, action);
+                                }
+                            });
                         });
                     });
                 });
             });
         });
     });
-
 }
 
 function allTabsUpdateTranquilityPreferences() {
@@ -275,12 +272,12 @@ function setZoom(zoom) {
 }
 
 function getIconFile(iconname) {
-    let iconfile = "tranquility-32.png";
+    let iconfile = "tranquility-128.png";
     if (iconname == "default") {
-        iconfile = "tranquility-32.png";
+        iconfile = "tranquility-128.png";
     }
     else if (iconname == "grayscale") {
-        iconfile = "tranquility-32-grayscale.png";
+        iconfile = "tranquility-128-grayscale.png";
     }
     return iconfile;
 }

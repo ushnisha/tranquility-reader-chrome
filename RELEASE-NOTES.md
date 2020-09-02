@@ -1,3 +1,60 @@
+## Version 3.0.21:
+
+* Preserve the original zoom setting (scale the font size instead)
+
+* Clone the document instead of the body (attempt to remove more
+  event listeners)
+
+* Auto-hide the UI controls (toggle display on clicking on the
+  body of the page)
+
+* Reorganize code to separate out UI related functionality
+  into a separate file
+
+* Update PRIVACY.md to reflect removal of "tabs" permission
+
+* Handle corner case where pages with content in the "main" tag
+  have content flowing outside the reading width
+
+* Fix bug where the page up/down scroll buttons do not work
+  in offline/saved pages
+
+* Refine regexp to remove additional ad related elements
+
+* Ignore CDATA nodes when measuring amount of text in an element
+
+* Adding missing heading/title if it has been removed during processing
+
+* Move logic to hide/remove spurious elements from css to javascript code
+  for better control; added additional filtering logic
+
+* Add scroll buttons (for page-up/page-down) for people who prefer mouse
+  to keyboard (and for mobile users)
+
+* Always scroll back to the top of the page/article after transforming
+  a page
+
+* Try to retain images within an article/main tag
+
+* Minor bug fixes and code restructuring/simplification
+
+* Removed unnecessary "tabs" permission request since we are not using it
+
+* Bug fix for regression on some pages.  The computed height and width
+  property were used to identify hidden elements, but the logic used
+  was incorrect.  Undoing this change.
+
+* Minor change to try and remove more unnecessary images that get
+  restored even though their parent elements were removed
+
+* Add the original/source link to the top of the transformed page.  This
+  is useful when the page is saved as a PDF or offline reading and the
+  users have forgotten and need to refer to the original source.
+
+* Bug fix so that we identify computed CSS style properties correctly
+
+--------------------------------
+
 ## Version 3.0.16:
 
 * New keyboard option to launch preferences page (Ctrl+Shift+J)

@@ -91,6 +91,9 @@ function applyFontPreferences() {
                 if(include_tags.indexOf(elems[i].getAttribute('class')) != -1) {
                     elems[i].style.fontSize = result.tranquility_font_size + "px";
                     elems[i].style.fontFamily = result.tranquility_font_name;
+                    if (elems[i].nodeName == "H1") {
+                        elems[i].style.fontSize = "150%";
+                    }
                 }
             }
         }
@@ -148,7 +151,7 @@ function applyAnnotationHighlightColorPreferences() {
         }
         else {
             console.log("Applying Annotation Highlight Color Preferences");
-            let elems = document.documentElement.getElementsByTagName("tranquility_annotation_selection");
+            let elems = document.documentElement.getElementsByClassName("tranquility_annotation_selection");
             for(let i=0; i < elems.length; i++) {
                 elems[i].style.backgroundColor = result.tranquility_annotation_highlight_color;
             }  

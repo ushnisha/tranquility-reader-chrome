@@ -6,7 +6,14 @@ the readability of web articles.
 Tranquility Reader was originally written for Firefox and has been recently
 ported to Chrome/Chromium.
 
-## To use Tranquility:
+Tranquility removes unnecessary elements in a webpage, and provides
+a simple and tranquil reading experience. Similar functionality is
+available through Readability or iReader or "Reader Mode" in Firefox.
+Please try the built in "Reader Mode" first and then consider
+Tranquility Reader only if some of the features available only in
+Tranquility Reader are critical for you.
+
+## To use Tranquilityi Reader, you can:
 
 * Click on the navigation-bar icon to transform the page
 
